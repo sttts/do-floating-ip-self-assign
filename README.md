@@ -72,6 +72,8 @@ Usage of /do-floating-ip-self-assign:
 ## Build
 
 ```bash
+$ export GOPATH=$PWD
+$ mkdir -p pkg src bin
 $ go get github.com/kubermatic/do-floating-ip-self-assign
 $ cd src/github.com/kubermatic/do-floating-ip-self-assign
 $ make docker
