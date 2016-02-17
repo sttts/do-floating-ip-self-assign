@@ -5,9 +5,9 @@ This tool assigns a given DigitalOcean floating IP to the current droplet. It ge
 ## Usage
 
 ```bash
-$ docker run -it sttts/do-floating-ip-self-assign --v=2 \
+$ docker run -it sttts/do-floating-ip-self-assign -v=2 \
     -token 12936827563745928758923423424 -floating-ip 1.2.3.4 \
-    --logtostderr=true
+    -logtostderr=true
 ```
 
 The token is a DigitalOcean API token which you can create at https://cloud.digitalocean.com/settings/api/tokens.
