@@ -29,7 +29,7 @@ spec:
       "/do-floating-ip-self-assign",
       "-token={{.ApiToken}}",
       "-floating-ip={{.FloatingIP}}",
-      "-v=4"
+      "-v=4", "-logtostderr=true"
     ]
 ```
 
