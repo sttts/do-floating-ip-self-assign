@@ -6,7 +6,7 @@ build:
 	GOOS=linux go build .
 
 docker: build
-	docker build -t $(REPOSITORY)/do-floatingip-self-assign .
+	docker build -t $(REPOSITORY)/do-floating-ip-self-assign .
 
 push: docker
-	docker push $(REPOSITORY)/do-floatingip-self-assign
+	docker push $(REPOSITORY)/do-floating-ip-self-assign
