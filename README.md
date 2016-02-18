@@ -22,6 +22,7 @@ kind: Pod
 metadata:
   name: do-floating-ip-self-assign
 spec:
+  hostNetwork: true
   containers:
   - name: do-floatingip-self-assign
     image: sttts/do-floating-ip-self-assign
