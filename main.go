@@ -152,7 +152,7 @@ func main() {
 				}
 
 				// waiting until event is finished
-				action, _, err := client.FloatingIPActions.Get(*floatingIP, actionId)
+				action, resp, err := client.FloatingIPActions.Get(*floatingIP, actionId)
 				if err != nil {
 					glog.Error(err)
 				} else {
@@ -161,7 +161,7 @@ func main() {
 						glog.Infof("Floating ip %s successfully assigned to droplet %d", *floatingIP, dropLetId)
 						break waitForAction
 					case "errored":
-						glog.Infof("Assignment failed")
+						glog.Infof("Assignment failed: action=%+v response=%+v", *action, *resp)
 						break waitForAction
 					}
 				}
