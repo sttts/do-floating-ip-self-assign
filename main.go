@@ -92,12 +92,18 @@ func main() {
 	client := godo.NewClient(oauthClient)
 
 	first := true
+	success := false
 	for {
 		if !first {
+			if success && *updatePeriod == 0 {
+				os.Exit(0)
+			}
+
 			glog.V(4).Infof("Waiting for %v for next floating IP self-assignment", *updatePeriod)
 			time.Sleep(*updatePeriod)
 		}
 		first = false
+		success = false
 
 		fip, resp, err := client.FloatingIPs.Get(*floatingIP)
 		if err != nil {
@@ -115,6 +121,7 @@ func main() {
 		}
 		if fip.Droplet != nil && fip.Droplet.ID == dropLetId {
 			glog.V(3).Infof("Floating ip %s is already assigned to droplet %d", *floatingIP, dropLetId)
+			success = true
 			continue
 		}
 
@@ -159,6 +166,7 @@ func main() {
 					switch action.Status {
 					case "completed":
 						glog.Infof("Floating ip %s successfully assigned to droplet %d", *floatingIP, dropLetId)
+						success = true
 						break waitForAction
 					case "errored":
 						glog.Infof("Assignment failed: action=%+v response=%+v", *action, *resp)
@@ -168,10 +176,6 @@ func main() {
 
 				time.Sleep(5 * time.Second)
 			}
-		}
-
-		if *updatePeriod == 0 {
-			os.Exit(0)
 		}
 	}
 }
