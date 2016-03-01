@@ -92,10 +92,9 @@ func main() {
 	client := godo.NewClient(oauthClient)
 
 	first := true
-	success := false
 	for {
 		if !first {
-			if success && *updatePeriod == 0 {
+			if *updatePeriod == 0 {
 				os.Exit(0)
 			}
 
@@ -103,7 +102,6 @@ func main() {
 			time.Sleep(*updatePeriod)
 		}
 		first = false
-		success = false
 
 		fip, resp, err := client.FloatingIPs.Get(*floatingIP)
 		if err != nil {
@@ -121,24 +119,47 @@ func main() {
 		}
 		if fip.Droplet != nil && fip.Droplet.ID == dropLetId {
 			glog.V(3).Infof("Floating ip %s is already assigned to droplet %d", *floatingIP, dropLetId)
-			success = true
 			continue
 		}
 
 		backoff := *retryBackoff
-		actionId := int(-1)
+		retryAssignment:
 		for r := *retries; r >= 0; r-- {
 			glog.V(2).Infof("Trying to assign the floating ip %s to droplet %d", *floatingIP, dropLetId)
 
 			// try to assign the float-up to this droplet
 			action, _, err := client.FloatingIPActions.Assign(*floatingIP, dropLetId)
-			if err == nil {
-				actionId = action.ID
-				break
+			if err != nil {
+				glog.Errorf("FloatingIPsActions.Assign returned error: %v", err)
+			} else {
+				// wait for action to finish
+				timeout := time.Now().Add(30 * time.Second)
+				for {
+					if time.Now().After(timeout) {
+						glog.Error("Timeout waiting for assignment to finish")
+						break
+					}
+
+					// waiting until event is finished
+					action, resp, err := client.FloatingIPActions.Get(*floatingIP, action.ID)
+					if err != nil {
+						glog.Error(err)
+					} else {
+						switch action.Status {
+						case "completed":
+							glog.Infof("Floating ip %s successfully assigned to droplet %d", *floatingIP, dropLetId)
+							break retryAssignment
+						case "errored":
+							glog.Infof("Assignment failed: action=%+v response=%+v", *action, *resp)
+							break
+						}
+					}
+
+					time.Sleep(5 * time.Second)
+				}
 			}
 
-			glog.Errorf("FloatingIPsActions.Assign returned error: %v", err)
-
+			// backoff wait
 			glog.V(4).Infof("Waiting backoff time %v before next float ip self-assignment try", backoff)
 			time.Sleep(backoff)
 
@@ -147,37 +168,6 @@ func main() {
 			if backoff > *retryBackoffMax {
 				backoff = *retryBackoffMax
 			}
-		}
-		if actionId == -1 {
-			continue
-		}
-
-		// wait for action to finish
-		timeout := time.Now().Add(30 * time.Second)
-		waitForAction:
-		for {
-			if time.Now().After(timeout) {
-				glog.Error("Timeout waiting for assignment to finish")
-				break
-			}
-
-			// waiting until event is finished
-			action, resp, err := client.FloatingIPActions.Get(*floatingIP, actionId)
-			if err != nil {
-				glog.Error(err)
-			} else {
-				switch action.Status {
-				case "completed":
-					glog.Infof("Floating ip %s successfully assigned to droplet %d", *floatingIP, dropLetId)
-					success = true
-					break waitForAction
-				case "errored":
-					glog.Infof("Assignment failed: action=%+v response=%+v", *action, *resp)
-					break waitForAction
-				}
-			}
-
-			time.Sleep(5 * time.Second)
 		}
 	}
 }
