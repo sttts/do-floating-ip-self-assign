@@ -95,6 +95,7 @@ func main() {
 	for {
 		if !first {
 			if *updatePeriod == 0 {
+				glog.Info("Terminating because update-period is zero")
 				os.Exit(0)
 			}
 
