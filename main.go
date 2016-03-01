@@ -29,12 +29,12 @@ func (t *tokenSource) Token() (*oauth2.Token, error) {
 func main() {
 	tokenFile := flag.String("token-file", "", "A file path with a DigitalOcean API token.")
 	token := flag.String("token", "", "A DigitalOcean API token.")
-	updatePeriod := flag.Duration("update-period", 60 * time.Second, "The time between floating IP update tries, 0 for only initial assignment.")
+	updatePeriod := flag.Duration("update-period", 5 * time.Minute, "The time between floating IP update tries, 0 for only initial assignment.")
 	floatingIP := flag.String("floating-ip", "", "The floating IP address to self-assign.")
 	retries := flag.Int64("retries", 5, "The number of retries when self-assignment fails, negative values for forever.")
 	retryBackoff := flag.Duration("backoff", time.Second, "Initial backoff time after a failure.")
-	retryBackoffFactor := flag.Float64("backoff-factor", 1.2, "Backoff time multiplier after each failure.")
-	retryBackoffMax := flag.Duration("backoff-max", time.Second*30, "Maximum backoff time after a failure.")
+	retryBackoffFactor := flag.Float64("backoff-factor", 2, "Backoff time multiplier after each failure.")
+	retryBackoffMax := flag.Duration("backoff-max", time.Minute * 2, "Maximum backoff time after a failure.")
 
 	flag.Parse()
 
@@ -148,34 +148,36 @@ func main() {
 				backoff = *retryBackoffMax
 			}
 		}
-		if actionId != -1 {
-			// wait for action to finish
-			timeout := time.Now().Add(30 * time.Second)
-			waitForAction:
-			for {
-				if time.Now().After(timeout) {
-					glog.Error("Timeout waiting for assignment to finish")
-					break
-				}
+		if actionId == -1 {
+			continue
+		}
 
-				// waiting until event is finished
-				action, resp, err := client.FloatingIPActions.Get(*floatingIP, actionId)
-				if err != nil {
-					glog.Error(err)
-				} else {
-					switch action.Status {
-					case "completed":
-						glog.Infof("Floating ip %s successfully assigned to droplet %d", *floatingIP, dropLetId)
-						success = true
-						break waitForAction
-					case "errored":
-						glog.Infof("Assignment failed: action=%+v response=%+v", *action, *resp)
-						break waitForAction
-					}
-				}
-
-				time.Sleep(5 * time.Second)
+		// wait for action to finish
+		timeout := time.Now().Add(30 * time.Second)
+		waitForAction:
+		for {
+			if time.Now().After(timeout) {
+				glog.Error("Timeout waiting for assignment to finish")
+				break
 			}
+
+			// waiting until event is finished
+			action, resp, err := client.FloatingIPActions.Get(*floatingIP, actionId)
+			if err != nil {
+				glog.Error(err)
+			} else {
+				switch action.Status {
+				case "completed":
+					glog.Infof("Floating ip %s successfully assigned to droplet %d", *floatingIP, dropLetId)
+					success = true
+					break waitForAction
+				case "errored":
+					glog.Infof("Assignment failed: action=%+v response=%+v", *action, *resp)
+					break waitForAction
+				}
+			}
+
+			time.Sleep(5 * time.Second)
 		}
 	}
 }
